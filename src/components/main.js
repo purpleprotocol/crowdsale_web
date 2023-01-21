@@ -9,6 +9,10 @@ import { abi } from "../config/abi";
 
 const API_URL = process.env.REACT_APP_API;
 const CONTRACT_ADDR = process.env.REACT_APP_CONTRACT_ADDRESS;
+
+const GNOSIS_SAFE_ADDR = process.env.REACT_APP_GNOSIS_SAFE_ADDRESS;
+const GNOSIS_PROXY_ADDR = process.env.REACT_APP_GNOSIS_PROXY_ADDRESS;
+
 const KYC_STATE = {
   NotVerified: 'NotVerified',
   Started: 'Started',
@@ -21,7 +25,8 @@ const STATE = {
   Initial: 0,
   VerificationRequired: 1,
   VerificationPending: 2,
-  Authorised: 3
+  VerificationDonePendingTransaction: 3,
+  Authorised: 4
 };
 const STAGE_NAME = {
   0: "Pre-sale (-66% off)",
@@ -43,6 +48,7 @@ export default function Main() {
   const [balance, setBalance] = useState(null);
   const [pendingBalance, setPendingBalance] = useState(null);
   const [individualTokensCap, setIndividualTokensCap] = useState(null);
+  const [transactionHash, setTransactionHash] = useState(null);
 
   // Authentication
   const [jwt, setJwt] = useState(null);
@@ -52,6 +58,7 @@ export default function Main() {
   const [error, setError] = useState(null);
   const [invalid, setInvalid] = useState(true);
   const [changed, setChanged] = useState(false);
+  const [flag, setFlag] = useState(0);
 
   const getEthMessage = message => {
     return keccak256(toUtf8Bytes(`\x19Ethereum Signed Message:\n${message.length}${message}`));
@@ -140,10 +147,14 @@ export default function Main() {
                 break;
               case KYC_STATE.Started:
               case KYC_STATE.Pending:
-              case KYC_STATE.VerifiedRequiresAuthorisation:
                 const cPendingBalance2 = await ctr.pending_psats(wallet);
                 setPendingBalance(hexToInt(cPendingBalance2._hex));
                 setState(STATE.VerificationPending);
+                break;
+              case KYC_STATE.VerifiedRequiresAuthorisation:
+                const cPendingBalance3 = await ctr.pending_psats(wallet);
+                setPendingBalance(hexToInt(cPendingBalance3._hex));
+                setState(STATE.VerificationDonePendingTransaction);
                 break;
               case KYC_STATE.Verified:
                 setState(STATE.Authorised);
@@ -167,12 +178,46 @@ export default function Main() {
       }
     })();
     // eslint-disable-next-line
-  }, []);
+  }, [flag]);
 
   const onBuyCoins = async () => {
     try {
+      const access_list = [
+        {
+          address: wallet,
+          storageKeys: ["0x0000000000000000000000000000000000000000000000000000000000000000"]
+        },
+        {
+          address: GNOSIS_SAFE_ADDR,
+          storageKeys: ["0x0000000000000000000000000000000000000000000000000000000000000000"]
+        },
+        {
+          address: GNOSIS_PROXY_ADDR,
+          storageKeys: []
+        }
+      ];
+
       const cResult = await contract.buyTokens(wallet, { value: ethers.utils.parseEther(document.getElementById("eth").value) });
       console.log(cResult);
+
+      const txHash = cResult.hash;
+      setTransactionHash(txHash);
+      const scan = new ethers.providers.EtherscanProvider();
+
+      let interval = setInterval(async () => {
+        try {
+          const resp = await scan.getTransaction(txHash);
+          console.log(resp);
+          if (resp && resp.confirmations >= 15) {
+            clearInterval(interval);
+            setFlag(flag + 1);
+          }
+        } catch (e) {
+          // setError("Checking transaction state failed. Refresh the page to change the state.");
+          console.log(e);
+        }
+      }, 5000);
+
       setError(null);
     } catch (e) {
       setError('Buy coins failed. Please try again.');
@@ -222,7 +267,7 @@ export default function Main() {
     {(state === STATE.Initial || state === STATE.Authorised) && <>
       <Statistic.Group size="mini" widths='two'>
         <Statistic size="mini">
-          <Statistic.Value>1 ETH = {rate} XPU</Statistic.Value>
+          <Statistic.Value>1 ETH = {rate * (3 - stage)} XPU</Statistic.Value>
           <Statistic.Label>Current rate</Statistic.Label>
         </Statistic>
         <Statistic size="mini">
@@ -240,6 +285,8 @@ export default function Main() {
           <div className="buy-coins-button">
             <Button fluid disabled={invalid} color="purple" onClick={onBuyCoins}>Purchase coins</Button>
           </div>
+
+          {transactionHash && <>Pending transaction: <a href={"https://etherscan.io/tx/" + transactionHash} target="_blank" rel="noreferrer">{transactionHash}</a></>}
           {invalid && changed && <div className="buy-coins-message">
             There is a 50k XPU cap per person. You already bought {balance / 1000000000000000000}, and have {(individualTokensCap - balance - pendingBalance) / 1000000000000000000} left you can buy.
           </div>}
@@ -252,7 +299,7 @@ export default function Main() {
     {state === STATE.VerificationRequired && <>
       <Statistic.Group size="mini" widths='two'>
         <Statistic size="mini">
-          <Statistic.Value>1 ETH = {rate} XPU</Statistic.Value>
+          <Statistic.Value>1 ETH = {rate * (3 - stage)} XPU</Statistic.Value>
           <Statistic.Label>Current rate</Statistic.Label>
         </Statistic>
         <Statistic size="mini">
@@ -271,6 +318,10 @@ export default function Main() {
 
     {state === STATE.VerificationPending && <>
       The KYC verification is ongoing. As soon as it's done, buying more coins will be possible.
+    </>}
+
+    {state === STATE.VerificationDonePendingTransaction && <>
+      The KYC verification is complete. We are still processing the request.
     </>}
 
     {error && <div className="error"> {error} </div>}

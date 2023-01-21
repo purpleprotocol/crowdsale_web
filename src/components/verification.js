@@ -1,3 +1,4 @@
+import { createVeriffFrame } from '@veriff/incontext-sdk';
 import { Veriff } from '@veriff/js-sdk';
 import { useEffect } from 'react';
 
@@ -10,7 +11,7 @@ export default function Verification({ jwt }) {
       apiKey: VERIFF_API_KEY,
       parentId: 'veriff',
       onSession: function (_, response) {
-        window.veriffSDK.createVeriffFrame({ url: response.verification.url });
+        createVeriffFrame({ url: response.verification.url });
       }
     });
 
