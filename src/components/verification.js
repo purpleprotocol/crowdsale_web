@@ -15,7 +15,7 @@ export default function Verification({ jwt }) {
       }
     });
 
-    veriff.setParams({ vendorData: jwt.user_id });
+    veriff.setParams({ vendorData: jwt.user_id || jwt.id });
     veriff.mount();
     // eslint-disable-next-line
   }, [])

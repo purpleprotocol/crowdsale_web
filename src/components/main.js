@@ -10,15 +10,13 @@ import { abi } from "../config/abi";
 const API_URL = process.env.REACT_APP_API;
 const CONTRACT_ADDR = process.env.REACT_APP_CONTRACT_ADDRESS;
 
-const GNOSIS_SAFE_ADDR = process.env.REACT_APP_GNOSIS_SAFE_ADDRESS;
-const GNOSIS_PROXY_ADDR = process.env.REACT_APP_GNOSIS_PROXY_ADDRESS;
-
 const KYC_STATE = {
   NotVerified: 'NotVerified',
   Started: 'Started',
   Pending: 'Pending',
   VerifiedRequiresAuthorisation: 'VerifiedRequiresAuthorisation',
-  Verified: 'Verified'
+  Verified: 'Verified',
+  Rejected: 'Rejected'
 };
 const STATE = {
   Undefined: -1,
@@ -26,7 +24,8 @@ const STATE = {
   VerificationRequired: 1,
   VerificationPending: 2,
   VerificationDonePendingTransaction: 3,
-  Authorised: 4
+  Authorised: 4,
+  Rejected: 5
 };
 const STAGE_NAME = {
   0: "Pre-sale (-66% off)",
@@ -84,6 +83,20 @@ export default function Main() {
 
   const auth = async () => {
     try {
+      const ls = localStorage.getItem("u");
+      if (ls) {
+        const item = JSON.parse(ls);
+        const id = item.user_id || item.id;
+        if (typeof id === "string") {
+          try {
+            const r = await axios.post(API_URL + `/users/${id}`);
+            localStorage.setItem("u", JSON.stringify(r.data));
+            setJwt(r.data);
+            return r.data;
+          } catch { }
+        }
+      }
+
       const nonce = await axios.post(API_URL + `/auth/request_nonce/${wallet}`);
       const message = nonce.data.message;
       const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -98,6 +111,7 @@ export default function Main() {
 
       const parsed = JSON.parse(json);
       setJwt(parsed);
+      localStorage.setItem("u", json);
       return parsed;
     } catch (e) {
       setError("Authentication error. Please try again.");
@@ -131,13 +145,22 @@ export default function Main() {
         const cIndividualTokensCap = await ctr.individualTokensCap();
         setIndividualTokensCap(hexToInt(cIndividualTokensCap._hex));
 
+        const authState = await auth();
+
+        if (authState.kyc_state === KYC_STATE.Rejected) {
+          const cPendingBalance4 = await ctr.pending_psats(wallet);
+          setPendingBalance(hexToInt(cPendingBalance4._hex));
+          setState(STATE.Rejected);
+          return;
+        }
+
         if (!cPending && !cAuthorised) {
           setState(STATE.Initial);
         } else if (cPending && !cAuthorised) {
           const cBalance = await ctr.balanceOf(wallet);
           setBalance(hexToInt(cBalance._hex));
 
-          const authState = await auth();
+          // const authState = await auth();
           if (authState) {
             switch (authState.kyc_state) {
               case KYC_STATE.NotVerified:
@@ -159,6 +182,11 @@ export default function Main() {
               case KYC_STATE.Verified:
                 setState(STATE.Authorised);
                 break;
+              // case KYC_STATE.Rejected:
+              //   const cPendingBalance4 = await ctr.pending_psats(wallet);
+              //   setPendingBalance(hexToInt(cPendingBalance4._hex));
+              //   setState(STATE.Rejected);
+              //   break;
               default:
                 break;
             }
@@ -171,7 +199,7 @@ export default function Main() {
           setState(STATE.Authorised);
         }
       } catch (e) {
-        setError("Error communicating with the smart contract. Please try again.");
+        setError("Error communicating with the smart contract. Make sure the MetaMask wallet is connected and selected properly.");
         console.log(e);
       } finally {
         setLoading(false);
@@ -182,21 +210,6 @@ export default function Main() {
 
   const onBuyCoins = async () => {
     try {
-      const access_list = [
-        {
-          address: wallet,
-          storageKeys: ["0x0000000000000000000000000000000000000000000000000000000000000000"]
-        },
-        {
-          address: GNOSIS_SAFE_ADDR,
-          storageKeys: ["0x0000000000000000000000000000000000000000000000000000000000000000"]
-        },
-        {
-          address: GNOSIS_PROXY_ADDR,
-          storageKeys: []
-        }
-      ];
-
       const cResult = await contract.buyTokens(wallet, { value: ethers.utils.parseEther(document.getElementById("eth").value) });
       console.log(cResult);
 
@@ -207,13 +220,11 @@ export default function Main() {
       let interval = setInterval(async () => {
         try {
           const resp = await scan.getTransaction(txHash);
-          console.log(resp);
           if (resp && resp.confirmations >= 15) {
             clearInterval(interval);
             setFlag(flag + 1);
           }
         } catch (e) {
-          // setError("Checking transaction state failed. Refresh the page to change the state.");
           console.log(e);
         }
       }, 5000);
@@ -221,6 +232,33 @@ export default function Main() {
       setError(null);
     } catch (e) {
       setError('Buy coins failed. Please try again.');
+    }
+  }
+
+  const onRefund = async () => {
+    try {
+      const cResult = await contract.cancelPurchaseFor(wallet);
+      console.log(cResult);
+
+      const txHash = cResult.hash;
+      setTransactionHash(txHash);
+      const scan = new ethers.providers.EtherscanProvider();
+
+      let interval = setInterval(async () => {
+        try {
+          const resp = await scan.getTransaction(txHash);
+          if (resp && resp.confirmations >= 15) {
+            clearInterval(interval);
+            setFlag(flag + 1);
+          }
+        } catch (e) {
+          console.log(e);
+        }
+      }, 5000);
+
+      setError(null);
+    } catch (e) {
+      setError('Refund coins failed. Please try again.');
     }
   }
 
@@ -322,6 +360,35 @@ export default function Main() {
 
     {state === STATE.VerificationDonePendingTransaction && <>
       The KYC verification is complete. We are still processing the request.
+    </>}
+
+    {state === STATE.Rejected && <>
+      <Statistic size="mini">
+        <Statistic.Value>{pendingBalance / 1000000000000000000} XPU</Statistic.Value>
+        <Statistic.Label>Current balance</Statistic.Label>
+      </Statistic>
+
+      {pendingBalance === 0 && <>
+        <Segment className="segment-box-vertical">
+          Sorry, your KYC verification was rejected
+        </Segment>
+      </>}
+
+      {pendingBalance !== 0 && <>
+        <Segment className="segment-box-vertical">
+          Sorry, your KYC verification was rejected. {!transactionHash && "Click below to refund the purchase."}
+
+          <div className="refund-coins">
+            {!transactionHash && <div>
+              <Button fluid color="purple" onClick={onRefund}>Refund</Button>
+            </div>}
+
+            {transactionHash && <>
+              Pending transaction: <a href={"https://etherscan.io/tx/" + transactionHash} target="_blank" rel="noreferrer">{transactionHash}</a>
+            </>}
+          </div>
+        </Segment>
+      </>}
     </>}
 
     {error && <div className="error"> {error} </div>}
