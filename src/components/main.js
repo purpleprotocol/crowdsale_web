@@ -84,14 +84,14 @@ export default function Main() {
 
   const auth = async (light = true) => {
     try {
-      const ls = localStorage.getItem("u");
+      const ls = localStorage.getItem(wallet);
       if (ls) {
         const item = JSON.parse(ls);
         const id = item.user_id || item.id;
         if (typeof id === "string") {
           try {
             const r = await axios.post(API_URL + `/users/${id}`);
-            localStorage.setItem("u", JSON.stringify(r.data));
+            localStorage.setItem(wallet, JSON.stringify(r.data));
             setJwt(r.data);
             return r.data;
           } catch { }
@@ -112,12 +112,12 @@ export default function Main() {
 
       const parsed = JSON.parse(json);
       setJwt(parsed);
-      localStorage.setItem("u", json);
+      localStorage.setItem(wallet, json);
       return parsed;
     } catch (e) {
       setError("Authentication error. Please try again.");
       console.log(e);
-      return undefined;
+      return {};
     }
   };
 
