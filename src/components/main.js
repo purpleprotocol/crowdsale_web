@@ -4,7 +4,7 @@ import { WalletContext } from "../hooks/walletContext";
 import axios from 'axios';
 import { ethers } from "ethers";
 import Verification from "./verification";
-import { keccak256, toUtf8Bytes } from "ethers/lib/utils";
+// import { keccak256, toUtf8Bytes } from "ethers/lib/utils";
 import { abi } from "../config/abi";
 
 const API_URL = process.env.REACT_APP_API;
@@ -25,7 +25,8 @@ const STATE = {
   VerificationPending: 2,
   VerificationDonePendingTransaction: 3,
   Authorised: 4,
-  Rejected: 5
+  Rejected: 5,
+  VerificationFinishedOnClient: 6
 };
 const STAGE_NAME = {
   0: "Pre-sale (-66% off)",
@@ -59,16 +60,16 @@ export default function Main() {
   const [changed, setChanged] = useState(false);
   const [flag, setFlag] = useState(0);
 
-  const getEthMessage = message => {
-    return keccak256(toUtf8Bytes(`\x19Ethereum Signed Message:\n${message.length}${message}`));
-  }
+  // const getEthMessage = message => {
+  //   return keccak256(toUtf8Bytes(`\x19Ethereum Signed Message:\n${message.length}${message}`));
+  // }
 
-  const hexToBytes = hex => {
-    const bytes = [];
-    for (let c = 2, l = hex.length; c < l; c += 2) { bytes.push(parseInt(hex.substr(c, 2), 16)) }
+  // const hexToBytes = hex => {
+  //   const bytes = [];
+  //   for (let c = 2, l = hex.length; c < l; c += 2) { bytes.push(parseInt(hex.substr(c, 2), 16)) }
 
-    return bytes;
-  }
+  //   return bytes;
+  // }
 
   const hex2a = hexx => {
     let hex = hexx.toString(), str = '';
@@ -81,7 +82,7 @@ export default function Main() {
     return parseInt(hex.substring(2), 16);
   }
 
-  const auth = async () => {
+  const auth = async (light = true) => {
     try {
       const ls = localStorage.getItem("u");
       if (ls) {
@@ -97,13 +98,13 @@ export default function Main() {
         }
       }
 
+      if (light) { return {} }
+
       const nonce = await axios.post(API_URL + `/auth/request_nonce/${wallet}`);
       const message = nonce.data.message;
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
-      const eth = getEthMessage(message);
-      const bytes = hexToBytes(eth);
-      const signature = await signer._legacySignMessage(bytes);
+      const signature = await signer.signMessage(message);
 
       const resp = await axios.post(API_URL + `/auth/request_jwt/${message}/${signature.substring(2)}`);
       const respHex = resp.data.jwt.split('.')[0];
@@ -145,7 +146,9 @@ export default function Main() {
         const cIndividualTokensCap = await ctr.individualTokensCap();
         setIndividualTokensCap(hexToInt(cIndividualTokensCap._hex));
 
-        const authState = await auth();
+        const authState = await auth(!cPending && !cAuthorised);
+
+        authState.kyc_state = KYC_STATE.NotVerified;
 
         if (authState.kyc_state === KYC_STATE.Rejected) {
           const cPendingBalance4 = await ctr.pending_psats(wallet);
@@ -160,7 +163,6 @@ export default function Main() {
           const cBalance = await ctr.balanceOf(wallet);
           setBalance(hexToInt(cBalance._hex));
 
-          // const authState = await auth();
           if (authState) {
             switch (authState.kyc_state) {
               case KYC_STATE.NotVerified:
@@ -284,6 +286,10 @@ export default function Main() {
     setChanged(true);
   }
 
+  const onVeriffFinished = () => {
+    setState(STATE.VerificationFinishedOnClient);
+  }
+
   if (loading) {
     return <></>;
   }
@@ -331,7 +337,7 @@ export default function Main() {
         </div>
       </Segment>
 
-      <div className="disclaimer">By purchasing Purplecoins, you declare to have read and understood the <a href="https://purplecoin.io/tsa" target="_blank" rel="noreferrer">Token Sale Agreement</a></div>
+      <div className="disclaimer">By purchasing Purplecoins, you declare to have read, understood, and agreed to the <a href="https://purplecoin.io/tsa" target="_blank" rel="noreferrer">Token Sale Agreement</a></div>
     </>}
 
     {state === STATE.VerificationRequired && <>
@@ -350,12 +356,16 @@ export default function Main() {
 
       <Segment className="segment-box-vertical" >
         <span>Account verification status: <b>{jwt.kyc_state}</b></span>
-        <Verification jwt={jwt} />
+        <Verification jwt={jwt} onFinish={onVeriffFinished} />
       </Segment>
     </>}
 
     {state === STATE.VerificationPending && <>
       The KYC verification is ongoing. As soon as it's done, buying more coins will be possible.
+    </>}
+
+    {state === STATE.VerificationFinishedOnClient && <>
+      KYC verification submitted. Thank you!
     </>}
 
     {state === STATE.VerificationDonePendingTransaction && <>
