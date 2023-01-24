@@ -25,7 +25,7 @@ export default function Header() {
           </Button.Content>
         </Button>
       </a>
-      <a className="discord" href="https://discord.gg/4hD4DzmD" target="_blank" rel="noreferrer">
+      <a className="discord" href="https://discord.gg/5ZVZnKd" target="_blank" rel="noreferrer">
         <Button basic size="small">
           <Button.Content>
             <Icon name="discord" size="large" /> Join us on Discord
