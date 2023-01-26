@@ -6,6 +6,7 @@ export default function FetchWallets() {
   const [wallet, setWallet] = useState(null);
   const [wallets, setWallets] = useState(null);
   const [hasMetaMask, setHasMetaMask] = useState(false);
+  const [isMainNet, setIsMainNet] = useState(false);
 
   useEffect(() => {
     const fn = async () => {
@@ -16,6 +17,7 @@ export default function FetchWallets() {
       }
 
       setHasMetaMask(true);
+      setIsMainNet(parseInt(window.ethereum.chainId.substring(2), 16) === 1);
 
       try {
         const res = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -39,6 +41,7 @@ export default function FetchWallets() {
     wallet,
     wallets,
     hasMetaMask,
-    balance
+    balance,
+    isMainNet
   };
 }

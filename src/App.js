@@ -9,7 +9,7 @@ import fetchWallets from './hooks/fetchWallets';
 import { WalletContext } from './hooks/walletContext';
 
 export default function App() {
-  const { loading, balance, wallet, wallets, hasMetaMask } = fetchWallets();
+  const { loading, balance, wallet, wallets, hasMetaMask, isMainNet } = fetchWallets();
 
   if (loading) {
     return <></>;
@@ -28,21 +28,22 @@ export default function App() {
             </div>
             <div className='top-distance'><b>Supported browsers: Chrome, Firefox, Edge, and Brave</b></div>
           </>}
-          {hasMetaMask && !wallet && <>
+          {hasMetaMask && !isMainNet && <>
+            <div className='custom-header center-text'>
+              <Image src={metamask} size="tiny" />
+              <span className='title'>Metamask not connected to Ethereum Mainnet</span>
+              <span className='sub-title'>Please make sure Ethereum Mainnet is selected in Metamask and retry</span>
+            </div>
+          </>}
+          {hasMetaMask && isMainNet && !wallet && <>
             <div className='custom-header center-text'>
               <Image src={metamask} size="tiny" />
               <span className='title'>No Metamask wallet was connected</span>
               <span className='sub-title'>Metamask installed but not connected, please follow the instructions on the metamask window to generate a wallet and then connect it</span>
               <span className='top-distance sub-title'><b>Once you have successfully connected your wallet, the next step is to transfer Ethereum to your newly created wallet<br/>You must transfer at least 0.25 ETH in order to participate in the sale</b></span>
-              {/* <a className='margin-all' href="https://www.gemini.com/share/dz5e4za2l" target="_blank" rel="noreferrer">
-                <Button basic className='button-img' size='big'>
-                  <Image src={gemini} size="mini" />Buy Ethereum on GEMINI
-                </Button>
-              </a>
-              <b>(And receive $10 in BTC if you create a new account)</b> */}
             </div>
           </>}
-          {hasMetaMask && wallet && balance === 0 && <>
+          {hasMetaMask && isMainNet && wallet && balance === 0 && <>
             <div className='custom-header center-text'>
               <Image src={metamask} size="tiny" />
               <span className='title'>Insufficient funds</span>
@@ -55,7 +56,7 @@ export default function App() {
               <b>(And receive $10 in BTC if you create a new account)</b>
             </div>
           </>}
-          {hasMetaMask && wallet && balance !== 0 && <div className='purple-content-inner'><Main /></div>}
+          {hasMetaMask && isMainNet && wallet && balance !== 0 && <div className='purple-content-inner'><Main /></div>}
         </div>
       </WalletContext.Provider>
     </>
