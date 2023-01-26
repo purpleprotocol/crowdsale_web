@@ -195,3 +195,27 @@ body {
   width: 100%;
   padding: 1rem 0;
 }
+
+.center-text {
+  text-align: center;
+}
+
+.top-distance {
+  margin-top: 2rem;
+}
+
+.button-img {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: center !important;
+  /* margin: .89rem !important; */
+}
+
+.button-img>img {
+  margin-right: .35rem;
+}
+
+.margin-all {
+  margin: .35rem !important;
+}
