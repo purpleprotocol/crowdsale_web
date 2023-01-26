@@ -17,7 +17,8 @@ export default function FetchWallets() {
       }
 
       setHasMetaMask(true);
-      setIsMainNet(parseInt(window.ethereum.chainId.substring(2), 16) === 1);
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      setIsMainNet(parseInt(chainId.substring(2), 16) === 1);
 
       try {
         const res = await window.ethereum.request({ method: 'eth_requestAccounts' });
