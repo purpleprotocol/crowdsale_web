@@ -23,7 +23,7 @@ export default function App() {
           {!hasMetaMask && <>
             <div className='custom-header'>
               <Image src={metamask} size="tiny" />
-              <span className='title'>Metamask extension not available</span>
+              <span className='title'>Metamask extension not available. Follow <a target="_blank" href="https://github.com/purpleprotocol/purplecoin/blob/main/doc/crowdsale.md#how-to-participate">this guide</a> on how to participate in the sale.</span>
               <span className='sub-title'>Metamask is needed to participate in the sale. Install it from <a href="https://chrome.google.com/webstore/detail/metamask/nkbihfbeogaeaoehlefnkodbefgpgknn?hl=en" target="_blank" rel="noreferrer">here</a> (or enable it if already installed)</span>
             </div>
             <div className='top-distance'><b>Supported browsers: Chrome, Firefox, Edge, and Brave</b></div>
@@ -39,7 +39,7 @@ export default function App() {
             <div className='custom-header center-text'>
               <Image src={metamask} size="tiny" />
               <span className='title'>No Metamask wallet was connected</span>
-              <span className='sub-title'>Metamask installed but not connected, please follow the instructions on the metamask window to generate a wallet and then connect it</span>
+              <span className='sub-title'>Metamask installed but not connected, please connect your metamask wallet and refresh the page. Follow <a target="_blank" href="https://github.com/purpleprotocol/purplecoin/blob/main/doc/crowdsale.md#how-to-participate">this guide</a> on how to participate in the sale.</span>
               <span className='top-distance sub-title'><b>Once you have successfully connected your wallet, the next step is to transfer Ethereum to your newly created wallet<br/>You must transfer at least 0.25 ETH in order to participate in the sale</b></span>
             </div>
           </>}
@@ -47,7 +47,7 @@ export default function App() {
             <div className='custom-header center-text'>
               <Image src={metamask} size="tiny" />
               <span className='title'>Insufficient funds</span>
-              <span className='sub-title'>You must transfer <b>at least 0.25 ETH</b> to your wallet in order to participate in the sale</span>
+              <span className='sub-title'>You must transfer <b>at least 0.25 ETH</b> to your wallet in order to participate in the sale. Follow <a target="_blank" href="https://github.com/purpleprotocol/purplecoin/blob/main/doc/crowdsale.md#how-to-participate">this guide</a> on how to participate in the sale.</span>
               <a className='top-distance' href="https://www.gemini.com/share/dz5e4za2l" target="_blank" rel="noreferrer">
                 <Button basic className='button-img margin-all' size='big'>
                   <Image src={gemini} size="mini" />Buy Ethereum on GEMINI

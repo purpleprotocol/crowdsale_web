@@ -269,7 +269,7 @@ export default function Main() {
     if (val < 0.25 || val > (individualTokensCap - balance - pendingBalance) / rate * (3 - stage) / 1000000000000000000) {
       setInvalid(true);
     } else {
-      document.getElementById("xpu").value = val * rate * (3 - stage);
+      document.getElementById("xpu").value = round(val * rate * (3 - stage), 2);
       setInvalid(false);
     }
     setChanged(true);
@@ -280,7 +280,7 @@ export default function Main() {
     if (val < 0.25 * rate * (3 - stage) || val > (individualTokensCap - balance - pendingBalance) / 1000000000000000000) {
       setInvalid(true);
     } else {
-      document.getElementById("eth").value = parseFloat(e.target.value) / (rate * (3 - stage));
+      document.getElementById("eth").value = round(parseFloat(e.target.value) / (rate * (3 - stage)), 2);
       setInvalid(false);
     }
     setChanged(true);
@@ -332,7 +332,7 @@ export default function Main() {
 
           {transactionHash && <>Pending transaction: <a href={"https://etherscan.io/tx/" + transactionHash} target="_blank" rel="noreferrer">{transactionHash}</a></>}
           {invalid && changed && <div className="buy-coins-message">
-            There is a 50k XPU cap per person. You already bought {balance / 1000000000000000000}, and have {(individualTokensCap - balance - pendingBalance) / 1000000000000000000} left you can buy.
+            There is a 50k XPU cap per person. You already bought {round(balance / 1000000000000000000, 2)}, and have {round((individualTokensCap - balance - pendingBalance) / 1000000000000000000, 2)} left you can buy.
           </div>}
         </div>
       </Segment>
@@ -404,3 +404,13 @@ export default function Main() {
     {error && <div className="error"> {error} </div>}
   </>
 }
+
+function round(value, precision) {
+  if (Number.isInteger(precision)) {
+    var shift = Math.pow(10, precision);
+    // Limited preventing decimal issue
+    return (Math.round( value * shift + 0.00000000000001 ) / shift);
+  } else {
+    return Math.round(value);
+  }
+} 
