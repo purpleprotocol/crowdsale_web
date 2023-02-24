@@ -153,8 +153,28 @@ body {
   width: 50%;
 }
 
+.segment-box-vertical .buy-coins-inputs>div.error,
+.segment-box-vertical .buy-coins-inputs> #eth >div.error {
+  margin: 0;
+}
+
 .segment-box-vertical .buy-coins-inputs div:first-child {
   margin-right: 0.35rem;
+}
+
+.buy-coins input[type="number"]::-webkit-outer-spin-button,
+.buy-coins input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.buy-coins-inputs .ui.label {
+  background: white;
+  border: 1px solid rgba(34, 36, 38, .15);
+}
+
+.buy-coins input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 .hero-title {
@@ -218,4 +238,23 @@ body {
 
 .margin-all {
   margin: .35rem !important;
+}
+
+.buy-coins-message {
+  color: #9f3a38;
+}
+
+.funds {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+}
+
+.funds > div:first-of-type {
+  margin-right: 0.8em !important;
+}
+
+#eth > div {
+  width: 100%;
 }

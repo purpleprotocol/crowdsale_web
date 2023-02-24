@@ -1,14 +1,18 @@
 import { useContext, useEffect, useState } from "react";
-import { Button, Input, Progress, Segment, Statistic } from "semantic-ui-react";
+import { Button, Divider, Input, Progress, Segment, Statistic } from "semantic-ui-react";
 import { WalletContext } from "../hooks/walletContext";
 import axios from 'axios';
 import { ethers } from "ethers";
 import Verification from "./verification";
 // import { keccak256, toUtf8Bytes } from "ethers/lib/utils";
 import { abi } from "../config/abi";
+import Decimal from "decimal.js";
 
 const API_URL = process.env.REACT_APP_API;
 const CONTRACT_ADDR = process.env.REACT_APP_CONTRACT_ADDRESS;
+const MIN_ETH = new Decimal(0.25);
+const DENOM = 1000000000000000000;
+const STAGES_NO = 3;
 
 const KYC_STATE = {
   NotVerified: 'NotVerified',
@@ -35,6 +39,10 @@ const STAGE_NAME = {
 };
 
 export default function Main() {
+  Decimal.set({
+    rounding: 8
+  });
+
   // Wallet of the buyer
   const { wallet } = useContext(WalletContext);
 
@@ -50,13 +58,20 @@ export default function Main() {
   const [individualTokensCap, setIndividualTokensCap] = useState(null);
   const [transactionHash, setTransactionHash] = useState(null);
 
+  const [walletBalance, setWalletBalance] = useState(null);
+  // TODO -> compute available here
+  const [availableForPurchase, setAvailableForPurchase] = useState(null);
+  const [eth, setETH] = useState(null);
+  const [xpu, setXPU] = useState(null);
+  const [hasFunds, setHasFunds] = useState(null);
+
   // Authentication
   const [jwt, setJwt] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState(STATE.Undefined);
   const [error, setError] = useState(null);
-  const [invalid, setInvalid] = useState(true);
+  const [invalid, setInvalid] = useState(false);
   const [changed, setChanged] = useState(false);
   const [flag, setFlag] = useState(0);
 
@@ -129,6 +144,12 @@ export default function Main() {
         const ctr = new ethers.Contract(CONTRACT_ADDR, abi, signer);
         setContract(ctr);
 
+        const wBalance = await provider.getBalance(wallet);
+        const wBalanceConv = new Decimal(hexToInt(wBalance._hex)).div(DENOM);
+        setWalletBalance(wBalanceConv);
+
+        setHasFunds(wBalanceConv.comparedTo(MIN_ETH) === 1);
+
         const cPending = await ctr.pending(wallet);
         const cAuthorised = await ctr.kyc_authorised(wallet);
 
@@ -140,9 +161,15 @@ export default function Main() {
         setTotalPsatsInEscrow(hexToInt(cTotalPsatsInEscrow._hex));
 
         const cRate = await ctr.rate();
-        setRate(hexToInt(cRate._hex));
+        const convRate = hexToInt(cRate._hex);
+        setRate(convRate);
         const cStage = await ctr.getCurrentStage();
-        setStage(hexToInt(cStage._hex));
+        const convStage = hexToInt(cStage._hex);
+        setStage(convStage);
+
+        setETH(MIN_ETH);
+        setXPU(MIN_ETH.mul(convRate).mul(STAGES_NO - convStage));
+
         const cIndividualTokensCap = await ctr.individualTokensCap();
         setIndividualTokensCap(hexToInt(cIndividualTokensCap._hex));
 
@@ -212,7 +239,8 @@ export default function Main() {
 
   const onBuyCoins = async () => {
     try {
-      const cResult = await contract.buyTokens(wallet, { value: ethers.utils.parseEther(document.getElementById("eth").value) });
+      const amount = eth.toString();
+      const cResult = await contract.buyTokens(wallet, { value: ethers.utils.parseEther(amount) });
       console.log(cResult);
 
       const txHash = cResult.hash;
@@ -264,25 +292,42 @@ export default function Main() {
     }
   }
 
-  const onEthChange = e => {
-    const val = parseFloat(e.target.value);
-    if (val < 0.25 || val > (individualTokensCap - balance - pendingBalance) / rate * (3 - stage) / 1000000000000000000) {
-      setInvalid(true);
-    } else {
-      document.getElementById("xpu").value = round(val * rate * (3 - stage), 2);
-      setInvalid(false);
-    }
-    setChanged(true);
+  const onEthFocus = e => {
+    e.target.closest(".ui.input").style.display = "none";
+    const input = document.getElementById("eth-input");
+    input.value = eth.toString();
+    input.closest(".ui.input").style.display = "inline-flex";
+    input.focus();
   }
 
-  const onXPUChange = e => {
-    const val = parseFloat(e.target.value);
-    if (val < 0.25 * rate * (3 - stage) || val > (individualTokensCap - balance - pendingBalance) / 1000000000000000000) {
+  const onEthBlur = e => {
+    e.target.closest(".ui.input").style.display = "none";
+    const display = document.getElementById("eth-display");
+    display.closest(".ui.input").style.display = "inline-flex";
+  }
+
+  const onEthChange = e => {
+    const val = new Decimal(e.target.value === "" ? NaN : e.target.value);
+    const lt = MIN_ETH;
+    const gt = new Decimal((individualTokensCap - balance - pendingBalance) / DENOM).div(rate).div(STAGES_NO - stage);
+
+    if (val.isNaN() || val.comparedTo(lt) === -1 || val.comparedTo(gt) === 1) {
       setInvalid(true);
+
+      if (val.isNaN()) {
+        setETH(null);
+        setXPU(null);
+      } else {
+        if (!eth || val.comparedTo(eth) !== 0) setETH(val);
+        setXPU(val.mul(rate).mul(3 - stage));
+      }
     } else {
-      document.getElementById("eth").value = round(parseFloat(e.target.value) / (rate * (3 - stage)), 2);
+      if (!eth || val.comparedTo(eth) !== 0) setETH(val);
+      setXPU(val.mul(rate).mul(3 - stage));
+
       setInvalid(false);
     }
+
     setChanged(true);
   }
 
@@ -297,13 +342,13 @@ export default function Main() {
   return <>
     <h1 className="hero-title">Buy Purplecoins in {STAGE_NAME[stage]}</h1>
     <div className="sale-progress">
-      <Progress color="purple" percent={Math.min(totalSoldPsats + totalPsatsInEscrow, tokensCap / 3) / (tokensCap / 3) * 100} size='small'>
+      <Progress color="purple" percent={Math.min(totalSoldPsats + totalPsatsInEscrow, tokensCap / STAGES_NO) / (tokensCap / STAGES_NO) * 100} size='small'>
         <span><b>Stage:</b> {STAGE_NAME[0]}</span>
       </Progress>
-      <Progress color="purple" percent={Math.max(totalSoldPsats + totalPsatsInEscrow - Math.min(totalSoldPsats + totalPsatsInEscrow, tokensCap / 3), 0) / (tokensCap / 3) * 100} size='small'>
+      <Progress color="purple" percent={Math.max(totalSoldPsats + totalPsatsInEscrow - Math.min(totalSoldPsats + totalPsatsInEscrow, tokensCap / STAGES_NO), 0) / (tokensCap / STAGES_NO) * 100} size='small'>
         <span><b>Stage:</b> {STAGE_NAME[1]}</span>
       </Progress>
-      <Progress color="purple" percent={Math.max(totalSoldPsats + totalPsatsInEscrow - Math.min(totalSoldPsats + totalPsatsInEscrow, (tokensCap / 3) * 2), 0) / (tokensCap / 3) * 100} size='small'>
+      <Progress color="purple" percent={Math.max(totalSoldPsats + totalPsatsInEscrow - Math.min(totalSoldPsats + totalPsatsInEscrow, (tokensCap / STAGES_NO) * 2), 0) / (tokensCap / STAGES_NO) * 100} size='small'>
         <span><b>Stage:</b> {STAGE_NAME[2]}</span>
       </Progress>
     </div>
@@ -311,29 +356,45 @@ export default function Main() {
     {(state === STATE.Initial || state === STATE.Authorised) && <>
       <Statistic.Group size="mini" widths='two'>
         <Statistic size="mini">
-          <Statistic.Value>1 ETH = {rate * (3 - stage)} XPU</Statistic.Value>
+          <Statistic.Value>1 ETH = {rate * (STAGES_NO - stage)} XPU</Statistic.Value>
           <Statistic.Label>Current rate</Statistic.Label>
         </Statistic>
         <Statistic size="mini">
-          <Statistic.Value>{balance / 1000000000000000000} XPU</Statistic.Value>
+          <Statistic.Value>{balance / DENOM} XPU</Statistic.Value>
           <Statistic.Label>Current balance</Statistic.Label>
         </Statistic>
       </Statistic.Group>
 
       <Segment className="segment-box-vertical">
         <div className="buy-coins">
+
           <div className="buy-coins-inputs">
-            <Input error={invalid && changed} id="eth" placeholder='0.25' onChange={onEthChange} labelPosition="right" label="ETH" type="number" min="0.25" max={(individualTokensCap - balance - pendingBalance) / rate * (3 - stage) / 1000000000000000000} />
-            <Input error={invalid && changed} id="xpu" placeholder={0.25 * rate * (3 - stage)} onChange={onXPUChange} labelPosition="right" label="XPU" type="number" min={0.25 * rate * (3 - stage)} max={(individualTokensCap - balance - pendingBalance) / 1000000000000000000} />
+            <div id="eth">
+              <Input id="eth-display" error={invalid && changed} value={eth} onFocus={onEthFocus} placeholder={MIN_ETH} labelPosition="right" label="ETH" type="number" min={MIN_ETH} max={(individualTokensCap - balance - pendingBalance) / rate / (3 - stage) / DENOM} />
+              <Input id="eth-input" style={{ display: "none" }} error={invalid && changed} placeholder={MIN_ETH} onChange={onEthChange} onBlur={onEthBlur} labelPosition="right" label="ETH" type="number" min={MIN_ETH} max={(individualTokensCap - balance - pendingBalance) / rate / (3 - stage) / DENOM} />
+            </div>
+
+            <Input error={invalid && changed} id="xpu" disabled={true} value={xpu} placeholder={MIN_ETH.mul(rate).mul(3 - stage)} labelPosition="right" label="XPU" type="number" />
           </div>
-          <div className="buy-coins-button">
+          {hasFunds && <div className="buy-coins-button">
             <Button fluid disabled={invalid} color="purple" onClick={onBuyCoins}>Purchase coins</Button>
-          </div>
+          </div>}
 
           {transactionHash && <>Pending transaction: <a href={"https://etherscan.io/tx/" + transactionHash} target="_blank" rel="noreferrer">{transactionHash}</a></>}
           {invalid && changed && <div className="buy-coins-message">
-            There is a 50k XPU cap per person. You already bought {round(balance / 1000000000000000000, 2)}, and have {round((individualTokensCap - balance - pendingBalance) / 1000000000000000000, 2)} left you can buy.
+            There is a <b>50k XPU</b> cap per person. Minimum purchase: <b>{MIN_ETH.toString()} ETH</b><br /> You already bought <b>{new Decimal(balance).div(DENOM).toString()} XPU</b>, and have <b>{new Decimal(individualTokensCap).sub(balance || 0).sub(pendingBalance || 0).div(DENOM).toString()} XPU</b> left you can buy.
           </div>}
+          {invalid && <Divider />}
+          <div className="balances">
+            {!hasFunds && <div>
+              Not enough funds (<b>{walletBalance.toString()} ETH</b>). You need to deposit <b>{MIN_ETH.sub(walletBalance).toString()} ETH</b> to your wallet to participate
+            </div>}
+
+            {hasFunds && <div className="funds">
+              <div>Total wallet balance: <b>{walletBalance.toString()} ETH</b></div>
+              <div>Available for purchase: <b>{walletBalance.comparedTo(new Decimal((individualTokensCap - balance - pendingBalance) / DENOM).div(rate).div(STAGES_NO - stage)) === -1 ? walletBalance.toString() : new Decimal((individualTokensCap - balance - pendingBalance) / DENOM).div(rate).div(STAGES_NO - stage).toString()} ETH</b></div>
+            </div>}
+          </div>
         </div>
       </Segment>
 
@@ -347,7 +408,7 @@ export default function Main() {
           <Statistic.Label>Current rate</Statistic.Label>
         </Statistic>
         <Statistic size="mini">
-          <Statistic.Value>{pendingBalance / 1000000000000000000} XPU</Statistic.Value>
+          <Statistic.Value>{pendingBalance / DENOM} XPU</Statistic.Value>
           <Statistic.Label>Current balance</Statistic.Label>
         </Statistic>
       </Statistic.Group>
@@ -374,7 +435,7 @@ export default function Main() {
 
     {state === STATE.Rejected && <>
       <Statistic size="mini">
-        <Statistic.Value>{pendingBalance / 1000000000000000000} XPU</Statistic.Value>
+        <Statistic.Value>{pendingBalance / DENOM} XPU</Statistic.Value>
         <Statistic.Label>Current balance</Statistic.Label>
       </Statistic>
 
@@ -404,13 +465,3 @@ export default function Main() {
     {error && <div className="error"> {error} </div>}
   </>
 }
-
-function round(value, precision) {
-  if (Number.isInteger(precision)) {
-    var shift = Math.pow(10, precision);
-    // Limited preventing decimal issue
-    return (Math.round( value * shift + 0.00000000000001 ) / shift);
-  } else {
-    return Math.round(value);
-  }
-} 
