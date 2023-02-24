@@ -53,8 +53,8 @@ export default function Main() {
   const [tokensCap, setTokensCap] = useState(null);
   const [rate, setRate] = useState(null);
   const [stage, setStage] = useState(null);
-  const [balance, setBalance] = useState(null);
-  const [pendingBalance, setPendingBalance] = useState(null);
+  const [balance, setBalance] = useState(0);
+  const [pendingBalance, setPendingBalance] = useState(0);
   const [individualTokensCap, setIndividualTokensCap] = useState(null);
   const [transactionHash, setTransactionHash] = useState(null);
 
@@ -307,20 +307,15 @@ export default function Main() {
   }
 
   const onEthChange = e => {
-    const val = new Decimal(e.target.value === "" ? NaN : e.target.value);
+    const val = new Decimal(e.target.value === "" ? 0 : e.target.value);
     const lt = MIN_ETH;
     const gt = new Decimal((individualTokensCap - balance - pendingBalance) / DENOM).div(rate).div(STAGES_NO - stage);
 
-    if (val.isNaN() || val.comparedTo(lt) === -1 || val.comparedTo(gt) === 1) {
+    if (val.comparedTo(lt) === -1 || val.comparedTo(gt) === 1) {
       setInvalid(true);
 
-      if (val.isNaN()) {
-        setETH(null);
-        setXPU(null);
-      } else {
-        if (!eth || val.comparedTo(eth) !== 0) setETH(val);
-        setXPU(val.mul(rate).mul(3 - stage));
-      }
+      if (!eth || val.comparedTo(eth) !== 0) setETH(val);
+      setXPU(val.mul(rate).mul(3 - stage));
     } else {
       if (!eth || val.comparedTo(eth) !== 0) setETH(val);
       setXPU(val.mul(rate).mul(3 - stage));
