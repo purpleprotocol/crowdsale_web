@@ -13,6 +13,7 @@
     "decimal.js": "^10.4.3",
     "ethers": "^5.7.2",
     "react": "^18.2.0",
+    "react-device-detect": "^2.2.3",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
     "semantic-ui-css": "^2.5.0",

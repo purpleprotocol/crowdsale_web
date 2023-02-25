@@ -7,6 +7,7 @@ export default function FetchWallets() {
   const [wallets, setWallets] = useState(null);
   const [hasMetaMask, setHasMetaMask] = useState(false);
   const [isMainNet, setIsMainNet] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
 
   useEffect(() => {
     const fn = async () => {
@@ -29,6 +30,8 @@ export default function FetchWallets() {
           const b = await window.ethereum.request({ method: 'eth_getBalance', params: [res[0], 'latest'] });
           setBalance(parseInt(b.substring(2), 16) / 1000000000000000000);
         }
+      } catch {
+        setConnectionError(true);
       } finally {
         setLoading(false);
       }
@@ -43,6 +46,7 @@ export default function FetchWallets() {
     wallets,
     hasMetaMask,
     balance,
-    isMainNet
+    isMainNet,
+    connectionError
   };
 }

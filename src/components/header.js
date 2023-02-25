@@ -9,7 +9,7 @@ export default function Header() {
 
   return <div className="purple-header">
     <div className="left">
-      <Image src={logo} /> <span>Purplecoin Sale</span>
+      <Image src={logo} /> <span>Purplecoin Crowdsale</span>
     </div>
     <div className="right">
       {wallet && <Button className="message" basic size="small" disabled>

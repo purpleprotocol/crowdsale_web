@@ -2,17 +2,44 @@ import { Button, Image } from 'semantic-ui-react';
 import './App.css';
 import metamask from './assets/icons/metamask.svg';
 import gemini from './assets/icons/gemini.svg';
+import logo from "./logo_white.png";
 import PurpleHeader from './components/header';
 import Main from './components/main';
 import fetchWallets from './hooks/fetchWallets';
 
 import { WalletContext } from './hooks/walletContext';
+import { isMobile } from 'react-device-detect';
 
 export default function App() {
-  const { loading, balance, wallet, wallets, hasMetaMask, isMainNet } = fetchWallets();
+  if (isMobile) {
+    return <div className='purple-content mobile'>
+      <div className='custom-header center-text'>
+        <Image src={logo} size="tiny" />
+        <span className='title-small'>Please visit this from a desktop browser</span>
+        <span className='sub-title'>Supported browsers: Chrome, Firefox, Edge, and Brave</span>
+      </div>
+    </div>;
+  }
+
+  const { loading, balance, wallet, wallets, hasMetaMask, isMainNet, connectionError } = fetchWallets();
 
   if (loading) {
     return <></>;
+  }
+
+  if (connectionError) {
+    return <>
+      <WalletContext.Provider value={{ wallet }}>
+        <PurpleHeader />
+        <div className='purple-content'>
+          <div className='custom-header'>
+            <Image src={metamask} size="tiny" />
+            <span className='title'>Wallet locked</span>
+            <span className='sub-title'>Follow the instruction in the Metamask window to connect your wallet</span>
+          </div>
+        </div>
+      </WalletContext.Provider>
+    </>;
   }
 
   return (
