@@ -175,7 +175,7 @@ export default function Main() {
 
         const authState = await auth(!cPending && !cAuthorised);
 
-        authState.kyc_state = KYC_STATE.NotVerified;
+        // authState.kyc_state = KYC_STATE.NotVerified;
 
         if (authState.kyc_state === KYC_STATE.Rejected) {
           const cPendingBalance4 = await ctr.pending_psats(wallet);
