@@ -16,6 +16,20 @@ export const abi = [
   {
     "constant": true,
     "inputs": [],
+    "name": "totalWeiInSettledEscrow",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "totalSoldPsats",
     "outputs": [
       {
@@ -122,6 +136,20 @@ export const abi = [
     "type": "function"
   },
   {
+    "constant": true,
+    "inputs": [],
+    "name": "minBuy",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "constant": false,
     "inputs": [],
     "name": "renounceOwnership",
@@ -152,25 +180,6 @@ export const abi = [
       {
         "name": "",
         "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "banned",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
       }
     ],
     "payable": false,
@@ -507,13 +516,8 @@ export const abi = [
   },
   {
     "constant": false,
-    "inputs": [
-      {
-        "name": "_beneficiary",
-        "type": "address"
-      }
-    ],
-    "name": "ban",
+    "inputs": [],
+    "name": "clearWeiInSettledEscrow",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
@@ -528,6 +532,34 @@ export const abi = [
       }
     ],
     "name": "updateRate",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_minBuy",
+        "type": "uint256"
+      }
+    ],
+    "name": "updateMinBuy",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_individualTokensCap",
+        "type": "uint256"
+      }
+    ],
+    "name": "updateIndividualTokensCap",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",

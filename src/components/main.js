@@ -10,7 +10,6 @@ import Decimal from "decimal.js";
 
 const API_URL = process.env.REACT_APP_API;
 const CONTRACT_ADDR = process.env.REACT_APP_CONTRACT_ADDRESS;
-const MIN_ETH = new Decimal(0.25);
 const DENOM = 1000000000000000000;
 const STAGES_NO = 3;
 
@@ -57,6 +56,7 @@ export default function Main() {
   const [pendingBalance, setPendingBalance] = useState(0);
   const [individualTokensCap, setIndividualTokensCap] = useState(null);
   const [transactionHash, setTransactionHash] = useState(null);
+  const [minBuy, setMinBuy] = useState(null);
 
   const [walletBalance, setWalletBalance] = useState(null);
   // TODO -> compute available here
@@ -148,7 +148,11 @@ export default function Main() {
         const wBalanceConv = new Decimal(hexToInt(wBalance._hex)).div(DENOM);
         setWalletBalance(wBalanceConv);
 
-        setHasFunds(wBalanceConv.comparedTo(MIN_ETH) === 1);
+        const cMinBuy = await ctr.minBuy();
+        const convMinBuy = new Decimal(hexToInt(cMinBuy._hex)).div(DENOM);
+        setMinBuy(convMinBuy);
+
+        setHasFunds(wBalanceConv.comparedTo(convMinBuy) === 1);
 
         const cPending = await ctr.pending(wallet);
         const cAuthorised = await ctr.kyc_authorised(wallet);
@@ -167,8 +171,8 @@ export default function Main() {
         const convStage = hexToInt(cStage._hex);
         setStage(convStage);
 
-        setETH(MIN_ETH);
-        setXPU(MIN_ETH.mul(convRate).mul(STAGES_NO - convStage));
+        setETH(convMinBuy);
+        setXPU(convMinBuy.mul(convRate).mul(STAGES_NO - convStage));
 
         const cIndividualTokensCap = await ctr.individualTokensCap();
         setIndividualTokensCap(hexToInt(cIndividualTokensCap._hex));
@@ -184,12 +188,12 @@ export default function Main() {
           return;
         }
 
+        const cBalance = await ctr.balanceOf(wallet);
+        setBalance(hexToInt(cBalance._hex));
+
         if (!cPending && !cAuthorised) {
           setState(STATE.Initial);
         } else if (cPending && !cAuthorised) {
-          const cBalance = await ctr.balanceOf(wallet);
-          setBalance(hexToInt(cBalance._hex));
-
           if (authState) {
             switch (authState.kyc_state) {
               case KYC_STATE.NotVerified:
@@ -223,8 +227,6 @@ export default function Main() {
             // error occured, just display it
           }
         } else if (!cPending && cAuthorised) {
-          const cBalance = await ctr.balanceOf(wallet);
-          setBalance(hexToInt(cBalance._hex));
           setState(STATE.Authorised);
         }
       } catch (e) {
@@ -308,7 +310,7 @@ export default function Main() {
 
   const onEthChange = e => {
     const val = new Decimal(e.target.value === "" ? 0 : e.target.value);
-    const lt = MIN_ETH;
+    const lt = minBuy;
     const gt = new Decimal((individualTokensCap - balance - pendingBalance) / DENOM).div(rate).div(STAGES_NO - stage);
 
     if (val.comparedTo(lt) === -1 || val.comparedTo(gt) === 1) {
@@ -365,11 +367,11 @@ export default function Main() {
 
           <div className="buy-coins-inputs">
             <div id="eth">
-              <Input id="eth-display" error={invalid && changed} value={eth} onFocus={onEthFocus} placeholder={MIN_ETH} labelPosition="right" label="ETH" type="number" min={MIN_ETH} max={(individualTokensCap - balance - pendingBalance) / rate / (3 - stage) / DENOM} />
-              <Input id="eth-input" style={{ display: "none" }} error={invalid && changed} placeholder={MIN_ETH} onChange={onEthChange} onBlur={onEthBlur} labelPosition="right" label="ETH" type="number" min={MIN_ETH} max={(individualTokensCap - balance - pendingBalance) / rate / (3 - stage) / DENOM} />
+              <Input id="eth-display" error={invalid && changed} value={eth} onFocus={onEthFocus} placeholder={minBuy} labelPosition="right" label="ETH" type="number" min={minBuy} max={(individualTokensCap - balance - pendingBalance) / rate / (3 - stage) / DENOM} />
+              <Input id="eth-input" style={{ display: "none" }} error={invalid && changed} placeholder={minBuy} onChange={onEthChange} onBlur={onEthBlur} labelPosition="right" label="ETH" type="number" min={minBuy} max={(individualTokensCap - balance - pendingBalance) / rate / (3 - stage) / DENOM} />
             </div>
 
-            <Input error={invalid && changed} id="xpu" disabled={true} value={xpu} placeholder={MIN_ETH.mul(rate).mul(3 - stage)} labelPosition="right" label="XPU" type="number" />
+            <Input error={invalid && changed} id="xpu" disabled={true} value={xpu} placeholder={minBuy.mul(rate).mul(3 - stage)} labelPosition="right" label="XPU" type="number" />
           </div>
           {hasFunds && <div className="buy-coins-button">
             <Button fluid disabled={invalid} color="purple" onClick={onBuyCoins}>Purchase coins</Button>
@@ -377,12 +379,12 @@ export default function Main() {
 
           {transactionHash && <>Pending transaction: <a href={"https://etherscan.io/tx/" + transactionHash} target="_blank" rel="noreferrer">{transactionHash}</a></>}
           {invalid && changed && <div className="buy-coins-message">
-            There is a <b>50k XPU</b> cap per person. Minimum purchase: <b>{MIN_ETH.toString()} ETH</b><br /> You already bought <b>{new Decimal(balance).div(DENOM).toString()} XPU</b>, and have <b>{new Decimal(individualTokensCap).sub(balance || 0).sub(pendingBalance || 0).div(DENOM).toString()} XPU</b> left you can buy.
+            There is a <b>{Number(new Decimal(individualTokensCap).div(DENOM).toString()).toLocaleString()} XPU</b> cap per person. Minimum purchase: <b>{minBuy.toString()} ETH</b><br /> You already bought <b>{new Decimal(balance).div(DENOM).toString()} XPU</b>, and have <b>{Number(new Decimal(individualTokensCap).sub(balance || 0).sub(pendingBalance || 0).div(DENOM).toString()).toLocaleString()} XPU</b> left you can buy.
           </div>}
           {invalid && <Divider />}
           <div className="balances">
             {!hasFunds && <div>
-              Not enough funds (<b>{walletBalance.toString()} ETH</b>). You need to deposit <b>{MIN_ETH.sub(walletBalance).toString()} ETH</b> to your wallet to participate
+              Not enough funds (<b>{walletBalance.toString()} ETH</b>). You need to deposit <b>{minBuy.sub(walletBalance).toString()} ETH</b> to your wallet to participate
             </div>}
 
             {hasFunds && <div className="funds">
