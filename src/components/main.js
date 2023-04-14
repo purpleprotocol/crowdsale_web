@@ -1,41 +1,14 @@
 import { useContext, useEffect, useState } from "react";
-import { Button, Divider, Input, Progress, Segment, Statistic } from "semantic-ui-react";
+import { Button, Dimmer, Divider, Input, Loader, Progress, Segment, Statistic } from "semantic-ui-react";
 import { WalletContext } from "../hooks/walletContext";
 import axios from 'axios';
 import { ethers } from "ethers";
 import Verification from "./verification";
-// import { keccak256, toUtf8Bytes } from "ethers/lib/utils";
 import { abi } from "../config/abi";
 import Decimal from "decimal.js";
+import { hex2int, hex2a } from "../utils";
 
-const API_URL = process.env.REACT_APP_API;
-const CONTRACT_ADDR = process.env.REACT_APP_CONTRACT_ADDRESS;
-const DENOM = 1000000000000000000;
-const STAGES_NO = 3;
-
-const KYC_STATE = {
-  NotVerified: 'NotVerified',
-  Started: 'Started',
-  Pending: 'Pending',
-  VerifiedRequiresAuthorisation: 'VerifiedRequiresAuthorisation',
-  Verified: 'Verified',
-  Rejected: 'Rejected'
-};
-const STATE = {
-  Undefined: -1,
-  Initial: 0,
-  VerificationRequired: 1,
-  VerificationPending: 2,
-  VerificationDonePendingTransaction: 3,
-  Authorised: 4,
-  Rejected: 5,
-  VerificationFinishedOnClient: 6
-};
-const STAGE_NAME = {
-  0: "Pre-sale (-66% off)",
-  1: "Early Bird (-33% off)",
-  2: "Public Sale"
-};
+import { API_URL, CONTRACT_ADDR, DENOM, STAGES_NO, CONFIRMATIONS_NO, POLL_RATE, KYC_STATE, STATE, STAGE_NAME } from "../consts";
 
 export default function Main() {
   Decimal.set({
@@ -57,10 +30,9 @@ export default function Main() {
   const [individualTokensCap, setIndividualTokensCap] = useState(null);
   const [transactionHash, setTransactionHash] = useState(null);
   const [minBuy, setMinBuy] = useState(null);
+  const [confirmations, setConfirmations] = useState(0);
 
   const [walletBalance, setWalletBalance] = useState(null);
-  // TODO -> compute available here
-  const [availableForPurchase, setAvailableForPurchase] = useState(null);
   const [eth, setETH] = useState(null);
   const [xpu, setXPU] = useState(null);
   const [hasFunds, setHasFunds] = useState(null);
@@ -73,7 +45,6 @@ export default function Main() {
   const [error, setError] = useState(null);
   const [invalid, setInvalid] = useState(false);
   const [changed, setChanged] = useState(false);
-  const [flag, setFlag] = useState(0);
 
   // const getEthMessage = message => {
   //   return keccak256(toUtf8Bytes(`\x19Ethereum Signed Message:\n${message.length}${message}`));
@@ -85,17 +56,6 @@ export default function Main() {
 
   //   return bytes;
   // }
-
-  const hex2a = hexx => {
-    let hex = hexx.toString(), str = '';
-    for (let i = 0, l = hex.length; i < l; i += 2) { str += String.fromCharCode(parseInt(hex.substr(i, 2), 16)) }
-
-    return str;
-  }
-
-  const hexToInt = (hex) => {
-    return parseInt(hex.substring(2), 16);
-  }
 
   const auth = async (light = true) => {
     try {
@@ -145,11 +105,12 @@ export default function Main() {
         setContract(ctr);
 
         const wBalance = await provider.getBalance(wallet);
-        const wBalanceConv = new Decimal(hexToInt(wBalance._hex)).div(DENOM);
+        const wBalanceConv = new Decimal(hex2int(wBalance._hex)).div(DENOM);
         setWalletBalance(wBalanceConv);
 
-        const cMinBuy = await ctr.minBuy();
-        const convMinBuy = new Decimal(hexToInt(cMinBuy._hex)).div(DENOM);
+        // const cMinBuy = await ctr.minBuy();
+        // const convMinBuy = new Decimal(hex2int(cMinBuy._hex)).div(DENOM);
+        const convMinBuy = new Decimal(0.01);
         setMinBuy(convMinBuy);
 
         setHasFunds(wBalanceConv.comparedTo(convMinBuy) === 1);
@@ -158,24 +119,24 @@ export default function Main() {
         const cAuthorised = await ctr.kyc_authorised(wallet);
 
         const cTotalSoldPsats = await ctr.totalSoldPsats();
-        setTotalSoldPsats(hexToInt(cTotalSoldPsats._hex));
+        setTotalSoldPsats(hex2int(cTotalSoldPsats._hex));
         const cTokensCap = await ctr.tokensCap();
-        setTokensCap(hexToInt(cTokensCap._hex));
+        setTokensCap(hex2int(cTokensCap._hex));
         const cTotalPsatsInEscrow = await ctr.totalPsatsInEscrow();
-        setTotalPsatsInEscrow(hexToInt(cTotalPsatsInEscrow._hex));
+        setTotalPsatsInEscrow(hex2int(cTotalPsatsInEscrow._hex));
 
         const cRate = await ctr.rate();
-        const convRate = hexToInt(cRate._hex);
+        const convRate = hex2int(cRate._hex);
         setRate(convRate);
         const cStage = await ctr.getCurrentStage();
-        const convStage = hexToInt(cStage._hex);
+        const convStage = hex2int(cStage._hex);
         setStage(convStage);
 
         setETH(convMinBuy);
         setXPU(convMinBuy.mul(convRate).mul(STAGES_NO - convStage));
 
         const cIndividualTokensCap = await ctr.individualTokensCap();
-        setIndividualTokensCap(hexToInt(cIndividualTokensCap._hex));
+        setIndividualTokensCap(hex2int(cIndividualTokensCap._hex));
 
         const authState = await auth(!cPending && !cAuthorised);
 
@@ -183,13 +144,13 @@ export default function Main() {
 
         if (authState.kyc_state === KYC_STATE.Rejected) {
           const cPendingBalance4 = await ctr.pending_psats(wallet);
-          setPendingBalance(hexToInt(cPendingBalance4._hex));
+          setPendingBalance(hex2int(cPendingBalance4._hex));
           setState(STATE.Rejected);
           return;
         }
 
         const cBalance = await ctr.balanceOf(wallet);
-        setBalance(hexToInt(cBalance._hex));
+        setBalance(hex2int(cBalance._hex));
 
         if (!cPending && !cAuthorised) {
           setState(STATE.Initial);
@@ -198,18 +159,18 @@ export default function Main() {
             switch (authState.kyc_state) {
               case KYC_STATE.NotVerified:
                 const cPendingBalance1 = await ctr.pending_psats(wallet);
-                setPendingBalance(hexToInt(cPendingBalance1._hex));
+                setPendingBalance(hex2int(cPendingBalance1._hex));
                 setState(STATE.VerificationRequired);
                 break;
               case KYC_STATE.Started:
               case KYC_STATE.Pending:
                 const cPendingBalance2 = await ctr.pending_psats(wallet);
-                setPendingBalance(hexToInt(cPendingBalance2._hex));
+                setPendingBalance(hex2int(cPendingBalance2._hex));
                 setState(STATE.VerificationPending);
                 break;
               case KYC_STATE.VerifiedRequiresAuthorisation:
                 const cPendingBalance3 = await ctr.pending_psats(wallet);
-                setPendingBalance(hexToInt(cPendingBalance3._hex));
+                setPendingBalance(hex2int(cPendingBalance3._hex));
                 setState(STATE.VerificationDonePendingTransaction);
                 break;
               case KYC_STATE.Verified:
@@ -217,7 +178,7 @@ export default function Main() {
                 break;
               // case KYC_STATE.Rejected:
               //   const cPendingBalance4 = await ctr.pending_psats(wallet);
-              //   setPendingBalance(hexToInt(cPendingBalance4._hex));
+              //   setPendingBalance(hex2int(cPendingBalance4._hex));
               //   setState(STATE.Rejected);
               //   break;
               default:
@@ -237,7 +198,7 @@ export default function Main() {
       }
     })();
     // eslint-disable-next-line
-  }, [flag]);
+  }, []);
 
   const onBuyCoins = async () => {
     try {
@@ -252,14 +213,18 @@ export default function Main() {
       let interval = setInterval(async () => {
         try {
           const resp = await scan.getTransaction(txHash);
-          if (resp && resp.confirmations >= 15) {
-            clearInterval(interval);
-            setFlag(flag + 1);
+          if (resp) {
+            if (resp.confirmations >= CONFIRMATIONS_NO) {
+              clearInterval(interval);
+              window.location.reload();
+            } else {
+              setConfirmations(resp.confirmations);
+            }
           }
         } catch (e) {
           console.log(e);
         }
-      }, 5000);
+      }, POLL_RATE);
 
       setError(null);
     } catch (e) {
@@ -279,14 +244,18 @@ export default function Main() {
       let interval = setInterval(async () => {
         try {
           const resp = await scan.getTransaction(txHash);
-          if (resp && resp.confirmations >= 15) {
-            clearInterval(interval);
-            setFlag(flag + 1);
+          if (resp) {
+            if (resp.confirmations >= CONFIRMATIONS_NO) {
+              clearInterval(interval);
+              window.location.reload();
+            } else {
+              setConfirmations(resp.confirmations);
+            }
           }
         } catch (e) {
           console.log(e);
         }
-      }, 5000);
+      }, POLL_RATE);
 
       setError(null);
     } catch (e) {
@@ -334,6 +303,18 @@ export default function Main() {
 
   if (loading) {
     return <></>;
+  }
+
+  if (transactionHash) {
+    return <>
+      <Dimmer active inverted>
+        <Loader inverted size="huge">
+          <h2>Please wait for the transaction to confirm and don't close the tab</h2>
+          View on Etherscan: <a href={"https://etherscan.io/tx/" + transactionHash} target="_blank" rel="noreferrer">{transactionHash}</a><br />
+          Confirmations: {confirmations} out of {CONFIRMATIONS_NO}
+        </Loader>
+      </Dimmer>
+    </>;
   }
 
   return <>

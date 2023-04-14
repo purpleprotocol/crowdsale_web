@@ -1,16 +1,45 @@
+import { ethers } from "ethers";
 import { useEffect, useState } from "react";
+import { abi } from "../config/abi";
+import { hex2int } from "../utils";
+
+const CONTRACT_ADDR = process.env.REACT_APP_CONTRACT_ADDRESS;
 
 export default function FetchWallets() {
   const [loading, setLoading] = useState(true);
-  const [balance, setBalance] = useState(null);
-  const [wallet, setWallet] = useState(null);
-  const [wallets, setWallets] = useState(null);
   const [hasMetaMask, setHasMetaMask] = useState(false);
   const [isMainNet, setIsMainNet] = useState(false);
-  const [connectionError, setConnectionError] = useState(false);
+
+  const [hasGlobalInfo, setHasGlobalInfo] = useState(true);
+  const [stageGlobal, setStageGlobal] = useState(null);
+  const [rateGlobal, setRateGlobal] = useState(null);
+  const [totalSoldPsatsGlobal, setTotalSoldPsatsGlobal] = useState(null);
+  const [totalPsatsInEscrowGlobal, setTotalPsatsInEscrowGlobal] = useState(null);
+  const [tokensCapGlobal, setTokensCapGlobal] = useState(null);
 
   useEffect(() => {
     const fn = async () => {
+      try {
+        // const provider = new ethers.providers.getDefaultProvider("http://localhost:8545");
+        const provider = new ethers.providers.getDefaultProvider("mainnet");
+        // const contract = new ethers.Contract(CONTRACT_ADDR, abi, provider);
+        const contract = new ethers.Contract("0x113180ecac90987c7EB2757e608ecF2ab943554C", abi, provider);
+
+        const cRate = await contract.rate();
+        setRateGlobal(hex2int(cRate._hex));
+        const cStage = await contract.getCurrentStage();
+        setStageGlobal(hex2int(cStage._hex));
+
+        const cTotalSoldPsats = await contract.totalSoldPsats();
+        setTotalSoldPsatsGlobal(hex2int(cTotalSoldPsats._hex));
+        const cTokensCap = await contract.tokensCap();
+        setTokensCapGlobal(hex2int(cTokensCap._hex));
+        const cTotalPsatsInEscrow = await contract.totalPsatsInEscrow();
+        setTotalPsatsInEscrowGlobal(hex2int(cTotalPsatsInEscrow._hex));
+      } catch {
+        setHasGlobalInfo(false);
+      }
+
       if (!window.ethereum) {
         setHasMetaMask(false);
         setLoading(false);
@@ -19,22 +48,10 @@ export default function FetchWallets() {
 
       setHasMetaMask(true);
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      setIsMainNet(parseInt(chainId.substring(2), 16) === 1);
+      // setIsMainNet(parseInt(chainId.substring(2), 16) === 1);
+      setIsMainNet(true);
 
-      try {
-        const res = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        setWallets(res);
-        setWallet(res[0]);
-
-        if (res[0]) {
-          const b = await window.ethereum.request({ method: 'eth_getBalance', params: [res[0], 'latest'] });
-          setBalance(parseInt(b.substring(2), 16) / 1000000000000000000);
-        }
-      } catch {
-        setConnectionError(true);
-      } finally {
-        setLoading(false);
-      }
+      setLoading(false);
     };
 
     fn();
@@ -42,11 +59,13 @@ export default function FetchWallets() {
 
   return {
     loading,
-    wallet,
-    wallets,
     hasMetaMask,
-    balance,
     isMainNet,
-    connectionError
+    hasGlobalInfo,
+    stageGlobal,
+    rateGlobal,
+    totalSoldPsatsGlobal,
+    totalPsatsInEscrowGlobal,
+    tokensCapGlobal
   };
 }
