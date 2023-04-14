@@ -22,8 +22,7 @@ export default function FetchWallets() {
       try {
         // const provider = new ethers.providers.getDefaultProvider("http://localhost:8545");
         const provider = new ethers.providers.getDefaultProvider("mainnet");
-        // const contract = new ethers.Contract(CONTRACT_ADDR, abi, provider);
-        const contract = new ethers.Contract("0x113180ecac90987c7EB2757e608ecF2ab943554C", abi, provider);
+        const contract = new ethers.Contract(CONTRACT_ADDR, abi, provider);
 
         const cRate = await contract.rate();
         setRateGlobal(hex2int(cRate._hex));
