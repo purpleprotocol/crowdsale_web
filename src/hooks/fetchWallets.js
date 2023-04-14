@@ -21,8 +21,10 @@ export default function FetchWallets() {
     const fn = async () => {
       try {
         // const provider = new ethers.providers.getDefaultProvider("http://localhost:8545");
-        const provider = new ethers.providers.getDefaultProvider("mainnet");
+        const provider = new ethers.providers.AlchemyProvider("homestead", "OpF-cdz-kOfnZAFK8ewfVGMi0ry7aW95");
+        // const provider = new ethers.providers.getDefaultProvider("https://eth-mainnet.g.alchemy.com/v2/OpF-cdz-kOfnZAFK8ewfVGMi0ry7aW95");
         const contract = new ethers.Contract(CONTRACT_ADDR, abi, provider);
+        // const contract = new ethers.Contract("0x113180ecac90987c7eb2757e608ecf2ab943554c", abi, provider);
 
         const cRate = await contract.rate();
         setRateGlobal(hex2int(cRate._hex));
@@ -48,6 +50,7 @@ export default function FetchWallets() {
       setHasMetaMask(true);
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       setIsMainNet(parseInt(chainId.substring(2), 16) === 1);
+      // setIsMainNet(true);
 
       setLoading(false);
     };
