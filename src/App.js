@@ -108,7 +108,7 @@ export default function App() {
               <Image src={metamask} size="tiny" />
               <span className='title'>No Metamask wallet was connected</span>
               <span className='sub-title'>Metamask installed but not connected, please connect your metamask wallet. Follow <a target="_blank" href="https://github.com/purpleprotocol/purplecoin/blob/main/doc/crowdsale.md#how-to-participate">this guide</a> on how to participate in the sale.</span>
-              <span className='top-distance sub-title'><b>Once you have successfully connected your wallet, the next step is to transfer Ethereum to your newly created wallet<br />You must transfer at least 0.01 ETH in order to participate in the sale, and make sure you have your ID/Passport ready for the identity verification</b></span>
+              <span className='top-distance sub-title'><b>Once you have successfully connected your wallet, the next step is to transfer Ethereum to your newly created wallet<br />You must transfer at least 0.05 ETH in order to participate in the sale, and make sure you have your ID/Passport ready for the identity verification</b></span>
               <div><Button color="purple" onClick={onWalletConnect} size="large" style={{ marginBottom: "1rem", marginTop: "1rem" }}>Connect wallet</Button></div>
             </div>
           </>}
@@ -116,7 +116,7 @@ export default function App() {
             <div className='custom-header center-text'>
               <Image src={metamask} size="tiny" />
               <span className='title'>Insufficient funds</span>
-              <span className='sub-title'>You must transfer <b>at least 0.01 ETH</b> to your wallet in order to participate in the sale, and make sure you have your ID/Passport ready for the identity verification. Follow <a target="_blank" href="https://github.com/purpleprotocol/purplecoin/blob/main/doc/crowdsale.md#how-to-participate">this guide</a> on how to participate in the sale.</span>
+              <span className='sub-title'>You must transfer <b>at least 0.05 ETH</b> to your wallet in order to participate in the sale, and make sure you have your ID/Passport ready for the identity verification. Follow <a target="_blank" href="https://github.com/purpleprotocol/purplecoin/blob/main/doc/crowdsale.md#how-to-participate">this guide</a> on how to participate in the sale.</span>
               <a className='top-distance' href="https://www.gemini.com/share/dz5e4za2l" target="_blank" rel="noreferrer">
                 <Button basic className='button-img margin-all' size='big'>
                   <Image src={gemini} size="mini" />Buy Ethereum on GEMINI

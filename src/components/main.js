@@ -110,7 +110,7 @@ export default function Main() {
 
         // const cMinBuy = await ctr.minBuy();
         // const convMinBuy = new Decimal(hex2int(cMinBuy._hex)).div(DENOM);
-        const convMinBuy = new Decimal(0.01);
+        const convMinBuy = new Decimal(0.05);
         setMinBuy(convMinBuy);
 
         setHasFunds(wBalanceConv.comparedTo(convMinBuy) === 1);
