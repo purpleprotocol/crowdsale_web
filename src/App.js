@@ -58,7 +58,7 @@ export default function App() {
       <WalletContext.Provider value={{ wallet, hasMetaMask }}>
         <PurpleHeader />
         <div className='purple-content'>
-          {!hideProgress && <>
+          {/* {!hideProgress && <>
             <h1 className="hero-title">Buy Purplecoins in {STAGE_NAME[stageGlobal]}</h1>
             <div className="sale-progress">
               <Progress color="purple" percent={Math.min(totalSoldPsatsGlobal + totalPsatsInEscrowGlobal, tokensCapGlobal / STAGES_NO) / (tokensCapGlobal / STAGES_NO) * 100} size='small'>
@@ -78,17 +78,16 @@ export default function App() {
                 <Statistic.Label>Current rate</Statistic.Label>
               </Statistic>
             </Statistic.Group>
-          </>}
+          </>} */}
 
-          {connectionError && <>
-            <div className='custom-header' style={{ textAlign: "center" }}>
-              <Image src={metamask} size="tiny" />
-              <span className='title'>Wallet locked</span>
-              <span className='sub-title'>Follow the instruction in the Metamask window to connect your wallet<br />After you're done, please refresh this page</span>
-            </div>
-          </>}
+          <div className='custom-header' style={{ textAlign: "center" }}>
+            <Image src={metamask} size="tiny" />
+            <span className='title'>The crowdsale has ended on the 1st of August 2023</span>
+            <span className='sub-title'>Thank you to everyone who participated,<br />Coins are redeemed on-chain at the launch of mainnet using the ETH keys used to participate.</span>
+          </div>
+        
 
-          {!connectionError && !hasMetaMask && <>
+          {/* {!connectionError && !hasMetaMask && <>
             <div className='custom-header'>
               <Image src={metamask} size="tiny" />
               <span className='title'>Metamask extension not available. Follow <a target="_blank" href="https://github.com/purpleprotocol/purplecoin/blob/main/doc/crowdsale.md#how-to-participate">this guide</a> on how to participate in the sale.</span>
@@ -127,7 +126,7 @@ export default function App() {
           </>}
           {!connectionError && hasMetaMask && isMainNet && wallet && balance !== 0 && <div className='purple-content-inner'><Main /></div>}
 
-          {!willShowMain && <><div className="disclaimer">By purchasing Purplecoins, you declare to have read, understood, and agreed to the <a href="https://purplecoin.io/tsa" target="_blank" rel="noreferrer">Token Sale Agreement</a></div></>}
+          {!willShowMain && <><div className="disclaimer">By purchasing Purplecoins, you declare to have read, understood, and agreed to the <a href="https://purplecoin.io/tsa" target="_blank" rel="noreferrer">Token Sale Agreement</a></div></>} */}
         </div>
       </WalletContext.Provider>
     </>
